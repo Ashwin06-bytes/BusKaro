@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passenger Portal</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background); padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: 40px auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { color: var(--primary); margin-bottom: 10px; }
+        p { color: var(--text-sub); margin-bottom: 25px; line-height: 1.5; }
+        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; font-size: 1rem; }
+        .btn { display: block; width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; text-decoration: none; border-radius: 8px; text-align: center; border: none; cursor: pointer; transition: background 0.2s; box-sizing: border-box; }
+        .btn-blue { background-color: var(--primary); color: white; }
+        .btn-blue:hover { background-color: #1d4ed8; }
+        .btn-green { background-color: #16a34a; color: white; }
+        .btn-green:hover { background-color: #15803d; }
+        .header { margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 style="color: var(--text-main);">Passenger Portal</h1>
+        <p>Choose your journey type below to continue.</p>
+    </div>
+
+    <div class="container">
+        <!-- Instant local ticket via QR simulation -->
+        <div class="card">
+            <h2>🚌 Local Bus Instant Ticket</h2>
+            <p>Select your specific bus number directly from the list to simulate scanning its QR code and board instantly.</p>
+            
+            <form method="POST">
+                {% csrf_token %}
+                <select name="bus_id" required>
+                    <option value="" disabled selected>Select Bus Number...</option>
+                    {% for bus in buses %}
+                        <option value="{{ bus.id }}">{{ bus.bus_number }} ({{ bus.route.name }})</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-blue" style="margin-bottom: 15px;">Board Specific Bus</button>
+            </form>
+            
+            <div style="margin: 20px 0; color: var(--text-sub); display: flex; align-items: center; justify-content: center;">
+                <hr style="flex: 1; border: none; border-top: 1px solid #e2e8f0;">
+                <span style="padding: 0 10px; font-weight: bold;">OR</span>
+                <hr style="flex: 1; border: none; border-top: 1px solid #e2e8f0;">
+            </div>
+
+            <button type="button" class="btn btn-green" id="start-scan-btn" style="background-color: #0f172a;" onclick="startScanner()">📷 Scan QR Code</button>
+            
+            <div id="reader-container" style="display: none; margin-top: 20px; border-radius: 8px; overflow: hidden; border: 2px solid var(--primary);">
+                <div id="reader" style="width: 100%;"></div>
+                <button type="button" class="btn btn-blue" style="border-radius: 0; background: #ef4444;" onclick="stopScanner()">Cancel Scan</button>
+            </div>
+        </div>
+
+        <!-- Aggregator advanced search -->
+        <div class="card">
+            <h2>🌍 Advance Booking Search</h2>
+            <p>Compare availability and prices instantly from providers like <strong>RedBus, AbhiBus, and TNSTC</strong>.</p>
+            
+            <form action="/search/" method="GET" style="margin-top: 20px; text-align: left;" onsubmit="return validateSearchForm(this);">
+                <script>
+                    function validateSearchForm(form) {
+                        if (form.origin.value === form.destination.value) {
+                            alert("Origin and Destination cannot be the same. Please select a different Destination.");
+                            return false;
+                        }
+                        
+                        const selectedDate = new Date(form.date.value);
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        if (selectedDate < today) {
+                            alert("Please select a valid date for travel.");
+                            return false;
+                        }
+                        return true;
+                    }
+                </script>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Origin</label>
+                    <select name="origin" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                        <option value="" disabled selected>-- Select Origin --</option>
+                        <option value="Chennai">Chennai</option>
+                        <option value="Coimbatore">Coimbatore</option>
+                        <option value="Madurai">Madurai</option>
+                        <option value="Trichy">Trichy</option>
+                        <option value="Salem">Salem</option>
+                        <option value="Bangalore">Bangalore</option>
+                        <option value="Hyderabad">Hyderabad</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Destination</label>
+                    <select name="destination" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                        <option value="" disabled selected>-- Select Destination --</option>
+                        <option value="Chennai">Chennai</option>
+                        <option value="Coimbatore">Coimbatore</option>
+                        <option value="Madurai">Madurai</option>
+                        <option value="Trichy">Trichy</option>
+                        <option value="Salem">Salem</option>
+                        <option value="Bangalore">Bangalore</option>
+                        <option value="Hyderabad">Hyderabad</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 25px;">
+                    <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Date of Journey</label>
+                    <input type="date" name="date" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; font-family: inherit;">
+                </div>
+                <button type="submit" class="btn btn-green">Search Available Buses</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        let html5QrcodeScanner = null;
+
+        function startScanner() {
+            document.getElementById('start-scan-btn').style.display = 'none';
+            document.getElementById('reader-container').style.display = 'block';
+            
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanError);
+        }
+        
+        function stopScanner() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+            document.getElementById('reader-container').style.display = 'none';
+            document.getElementById('start-scan-btn').style.display = 'block';
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (decodedText.includes('/passenger/')) {
+                window.location.href = decodedText;
+                stopScanner();
+            } else {
+                alert("Invalid QR Code for Bus Ticket System.");
+            }
+        }
+
+        function onScanError(errorMessage) {
+            // handle scanning iteration errors silently
+        }
+    </script>
+</body>
+</html>

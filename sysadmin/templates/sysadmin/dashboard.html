@@ -1,0 +1,115 @@
+{% extends 'sysadmin/layout.html' %}
+
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="metrics-grid fade-in">
+    <div class="metric-card">
+        <h3>Total Revenue Collected</h3>
+        <div class="val">₹ {{ total_revenue|floatformat:2 }}</div>
+    </div>
+    <div class="metric-card">
+        <h3>Live Active Passengers</h3>
+        <div class="val" style="color:var(--success);">{{ active_passengers }}</div>
+    </div>
+    <div class="metric-card">
+        <h3>Total Tickets Issued</h3>
+        <div class="val">{{ total_tickets }}</div>
+    </div>
+</div>
+
+<div class="metrics-grid fade-in">
+    <div class="metric-card">
+        <h3>Fleet Size (Buses)</h3>
+        <div class="val">{{ total_buses }}</div>
+    </div>
+    <div class="metric-card">
+        <h3>Employed Conductors</h3>
+        <div class="val">{{ total_conductors }}</div>
+    </div>
+</div>
+
+<div class="metrics-grid fade-in">
+    <div class="metric-card" style="flex:2;">
+        <h3>Daily Revenue Breakdown (Last 7 Days)</h3>
+        <table class="admin-table" style="font-size:0.9rem;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Tickets Issued</th>
+                    <th>Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dr in date_revenue %}
+                <tr>
+                    <td>{{ dr.date|date:"Y-m-d" }}</td>
+                    <td>{{ dr.ticket_count }}</td>
+                    <td style="color:var(--primary-color); font-weight:600;">₹{{ dr.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" style="text-align:center;">No recent transactions</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="metric-card" style="flex:2;">
+        <h3>Revenue by Bus Allocation</h3>
+        <table class="admin-table" style="font-size:0.9rem;">
+            <thead>
+                <tr>
+                    <th>Bus Number</th>
+                    <th>Tickets Issued</th>
+                    <th>Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for br in bus_revenue %}
+                <tr>
+                    <td><strong>{{ br.bus__bus_number }}</strong></td>
+                    <td>{{ br.ticket_count }}</td>
+                    <td style="color:var(--primary-color); font-weight:600;">₹{{ br.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" style="text-align:center;">No buses with recorded revenue</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h3>Recent Bookings</h3>
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Ticket ID</th>
+            <th>Passenger</th>
+            <th>Bus</th>
+            <th>Fare</th>
+            <th>Status</th>
+            <th>Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in recent_tickets %}
+        <tr>
+            <td style="font-size:0.8rem; color:#777;">{{ t.ticket_id }}</td>
+            <td>{{ t.passenger_name }}</td>
+            <td><strong>{{ t.bus.bus_number }}</strong></td>
+            <td>₹{{ t.fare_amount }}</td>
+            <td>
+                {% if t.status == 'ACTIVE' %}
+                <span class="badge badge-active" style="padding:0.2rem 0.5rem;">{{ t.status }}</span>
+                {% else %}
+                <span class="badge badge-expired" style="padding:0.2rem 0.5rem; font-size: 0.65rem;">{{ t.status }}</span>
+                {% endif %}
+            </td>
+            <td>{{ t.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;">No recent bookings</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

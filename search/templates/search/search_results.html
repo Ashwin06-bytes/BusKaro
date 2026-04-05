@@ -1,0 +1,186 @@
+{# Standalone template #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Search Results</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --subtext: #64748b;
+            --border: #e2e8f0;
+            --dummy-bg: #f1f5f9;
+            --tatkal-color: #f59e0b; /* Amber */
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background); margin: 0; padding: 20px; color: var(--text); }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header-section { margin-bottom: 20px; }
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        select, button { padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
+        .dummy-card { border: 2px dashed #94a3b8; background-color: var(--dummy-bg); }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-source { background: #e0e7ff; color: #3730a3; }
+        .badge-dummy { background: #e2e8f0; color: #475569; position: absolute; right: 15px; top: 15px; }
+        .badge-tatkal { background: #fef3c7; color: #d97706; margin-left: 10px; }
+        .price { font-size: 1.25rem; font-weight: bold; color: var(--primary); }
+        .book-btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .times { font-size: 1.1rem; font-weight: bold; margin: 10px 0; }
+        .meta-info { font-size: 0.9rem; color: var(--subtext); }
+        #loading { display: none; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-section">
+            <h1 data-i18n="Search Results">Search Results</h1>
+            <p><span id="search-info"></span></p>
+        </div>
+
+        <div class="controls">
+            <select id="sort-control">
+                <option value="fare" data-i18n="Sort by: Lowest Fare">Sort by: Lowest Fare</option>
+                <option value="departure" data-i18n="Sort by: Earliest Departure">Sort by: Earliest Departure</option>
+                <option value="duration" data-i18n="Sort by: Duration">Sort by: Duration</option>
+            </select>
+            <select id="source-filter">
+                <option value="all" data-i18n="Filter by Source: All">Filter by Source: All</option>
+                <option value="internal">Internal</option>
+                <option value="tnstc">TNSTC</option>
+                <option value="redbus">redBus</option>
+                <option value="abhibus">AbhiBus</option>
+            </select>
+            <label>
+                <input type="checkbox" id="tatkal-filter"> <span data-i18n="Tatkal Available">Tatkal Available</span>
+            </label>
+        </div>
+
+        <div id="loading" data-i18n="Loading results...">Loading results...</div>
+        <div id="results-container"></div>
+    </div>
+
+    <script>
+        const origin = "{{ origin }}";
+        const destination = "{{ destination }}";
+        const date = "{{ date }}";
+
+        document.getElementById('search-info').innerText = `${origin} ➔ ${destination} on ${date}`;
+
+        let currentData = [];
+
+        async function fetchResults() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results-container').innerHTML = '';
+            
+            try {
+                const res = await fetch(`/aggregator/search/?origin=${origin}&destination=${destination}&date=${date}`);
+                const json = await res.json();
+                currentData = json.results || [];
+                renderResults();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('results-container').innerHTML = '<p>Error loading results.</p>';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function renderResults() {
+            const container = document.getElementById('results-container');
+            container.innerHTML = '';
+            
+            let data = [...currentData];
+
+            // Filter by source
+            const sourceFilter = document.getElementById('source-filter').value;
+            if (sourceFilter !== 'all') {
+                data = data.filter(item => item.source === sourceFilter);
+            }
+
+            // Filter by tatkal
+            const tatkalFilter = document.getElementById('tatkal-filter').checked;
+            if (tatkalFilter) {
+                data = data.filter(item => item.tatkal_open);
+            }
+
+            // Sort
+            const sortControl = document.getElementById('sort-control').value;
+            data.sort((a, b) => {
+                if (sortControl === 'fare') {
+                    // if tatkal, use tatkal fare maybe? The user spec said sort unified results by fare ascending.
+                    return a.fare - b.fare;
+                } else if (sortControl === 'departure') {
+                    return new Date(a.departure_dt) - new Date(b.departure_dt);
+                } else if (sortControl === 'duration') {
+                    return a.duration_mins - b.duration_mins;
+                }
+                return 0;
+            });
+
+            if (data.length === 0) {
+                container.innerHTML = '<p>No buses found.</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `card ${item.is_dummy ? 'dummy-card' : ''}`;
+                
+                const dep = new Date(item.departure_dt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const arr = new Date(item.arrival_dt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                let tatkalHtml = '';
+                if (item.tatkal_open) {
+                    tatkalHtml = `<span class="badge badge-tatkal" data-i18n="TATKAL">TATKAL ₹${item.tatkal_fare}</span>`;
+                }
+
+                let dummyHtml = '';
+                if (item.is_dummy) {
+                    dummyHtml = `<span class="badge badge-dummy" data-i18n="DUMMY DATA">DUMMY DATA</span>`;
+                }
+
+                let bookUrl = item.booking_url ? item.booking_url : `/bookings/new/?trip=${item.source_trip_id}`;
+
+                div.innerHTML = `
+                    ${dummyHtml}
+                    <div class="flex-between">
+                        <div>
+                            <strong>${item.operator_name}</strong>
+                            <div class="meta-info">${item.bus_type}</div>
+                        </div>
+                        <div class="price">
+                            ₹${item.fare} ${tatkalHtml}
+                        </div>
+                    </div>
+                    <div class="times">
+                        ${dep} - ${arr} <span class="meta-info">(${Math.floor(item.duration_mins/60)}h ${item.duration_mins%60}m)</span>
+                    </div>
+                    <div class="flex-between meta-info" style="margin-top: 15px;">
+                        <div>
+                            <span class="badge badge-source">${item.source.toUpperCase()}</span>
+                            <span>Seats Available: ${item.seats_available}</span>
+                        </div>
+                        <a href="${bookUrl}" class="book-btn">Book Now</a>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        document.getElementById('sort-control').addEventListener('change', renderResults);
+        document.getElementById('source-filter').addEventListener('change', renderResults);
+        document.getElementById('tatkal-filter').addEventListener('change', renderResults);
+
+        // Initial load
+        if(origin && destination && date) {
+            fetchResults();
+        }
+    </script>
+</body>
+</html>

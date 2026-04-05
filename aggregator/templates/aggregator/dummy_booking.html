@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Confirmation - {{ source }}</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; padding: 20px; }
+        .booking-card { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2563eb; }
+        .details p { font-size: 1.1rem; line-height: 1.6; }
+        .details { margin-bottom: 30px; }
+        .btn-pay { display: block; width: 100%; text-align: center; background-color: #16a34a; color: white; border: none; padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; }
+        .btn-pay:hover { background-color: #15803d; }
+        .ticket-success { display: none; margin-top: 20px; padding: 20px; background-color: #dcfce7; color: #166534; border-radius: 8px; border: 1px solid #bbf7d0; text-align: center;}
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="booking-card">
+        <h1>Confirm your Booking</h1>
+        <div class="details">
+            <p><strong>Provider:</strong> {{ source|upper }}</p>
+            <p><strong>Trip ID:</strong> {{ trip_id }}</p>
+            <p><strong>Route:</strong> <span style="text-transform: capitalize;">{{ origin }}</span> to <span style="text-transform: capitalize;">{{ destination }}</span></p>
+            <p><strong>Date:</strong> {{ date }}</p>
+            <p><strong>Total Fare:</strong> ₹{{ fare }}</p>
+        </div>
+        
+        <button class="btn-pay" onclick="generateTicket()">Pay ₹{{ fare }} & Generate Ticket</button>
+        <div id="success-box" class="ticket-success">
+            <h2>🎉 Ticket Generated Successfully!</h2>
+            <div id="ticket-content" style="background: #ffffff; padding: 30px; border-radius: 8px; margin: 15px auto; color: #000000; border: 1px solid #cbd5e1; max-width: 350px; font-family: sans-serif; text-align: left;">
+                <h3 style="margin-top: 0; text-align: center;">{{ source|upper }} BUS TICKET</h3>
+                <hr style="border: none; border-top: 1px dashed #cbd5e1; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                    <div id="qr-code" style="padding: 10px; background: white; border: 1px solid #ccc; border-radius: 4px;"></div>
+                </div>
+                <div style="font-size: 1.1rem; line-height: 1.8;">
+                    <p style="margin: 0;"><strong>PNR:</strong> <span id="pnr"></span></p>
+                    <p style="margin: 0;"><strong>Date:</strong> {{ date }}</p>
+                    <p style="margin: 0;"><strong>Trip:</strong> <span style="text-transform: capitalize;">{{ origin }}</span> ➔ <span style="text-transform: capitalize;">{{ destination }}</span></p>
+                    <p style="margin: 0;"><strong>Fare:</strong> ₹{{ fare }}</p>
+                </div>
+            </div>
+            <br>
+            <button class="btn-pay" style="display: block; width: 100%; margin-top: 5px; background-color: #2563eb;" onclick="downloadTicket()">Download Ticket (PDF)</button>
+            <a href="javascript:history.back()" style="display:inline-block; margin-top:15px; color:#166534; font-weight: bold; text-decoration: none;">← Back to Search</a>
+        </div>
+    </div>
+
+    <script>
+        let downloadTimer = null;
+
+        function downloadTicket() {
+            if(downloadTimer) clearTimeout(downloadTimer);
+            const pnr = document.getElementById('pnr').innerText;
+            var element = document.getElementById('ticket-content');
+            
+            var opt = {
+                margin:       0.5,
+                filename:     `Bus_Ticket_${pnr}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { scale: 2, logging: false, scrollY: 0 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        function generateTicket() {
+            document.getElementById('success-box').style.display = 'block';
+            const generatedPnr = 'PNR-' + Math.floor(Math.random() * 10000000);
+            document.getElementById('pnr').innerText = generatedPnr;
+            
+            const qrData = `PNR: ${generatedPnr} | From: {{ origin }} | To: {{ destination }} | Date: {{ date }}`;
+            document.getElementById('qr-code').innerHTML = "";
+            new QRCode(document.getElementById("qr-code"), {
+                text: qrData,
+                width: 150,
+                height: 150,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            
+            document.querySelector('.btn-pay').style.display = 'none';
+
+            // Automatic download after 3 seconds
+            downloadTimer = setTimeout(downloadTicket, 3000);
+        }
+    </script>
+</body>
+</html>

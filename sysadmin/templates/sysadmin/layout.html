@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNSTC System Admin</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body { margin: 0; padding: 0; font-family: var(--font-stack); display: flex; height: 100vh; background: #F4F7F6; }
+        .sidebar {
+            width: 250px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-header {
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+        }
+        .nav-links li a {
+            display: block;
+            padding: 15px 20px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: 0.2s;
+        }
+        .nav-links li a:hover, .nav-links li a.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left: 4px solid white;
+        }
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            flex: 1;
+            min-width: 200px;
+        }
+        .metric-card h3 { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px; }
+        .metric-card .val { font-size: 2rem; font-weight: 700; color: var(--primary-color); }
+        .metrics-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        /* Tables */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .admin-table th, .admin-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .admin-table th { background: #fafafa; font-weight: 600; color: var(--text-muted); }
+        
+        .messages { padding: 10px; margin-bottom: 20px; border-radius: 8px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        /* Modal simple css */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; padding: 20px; border-radius: var(--border-radius); width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">TNSTC Dashboard</div>
+        <ul class="nav-links">
+            <li><a href="{% url 'sysadmin_dashboard' %}" class="{% if request.resolver_match.url_name == 'sysadmin_dashboard' %}active{% endif %}">📊 Overview</a></li>
+            <li><a href="{% url 'sysadmin_buses' %}" class="{% if request.resolver_match.url_name == 'sysadmin_buses' %}active{% endif %}">🚌 Buses</a></li>
+            <li><a href="{% url 'sysadmin_conductors' %}" class="{% if request.resolver_match.url_name == 'sysadmin_conductors' %}active{% endif %}">🧑‍✈️ Conductors</a></li>
+            <li><a href="{% url 'sysadmin_tatkal' %}" class="{% if request.resolver_match.url_name == 'sysadmin_tatkal' %}active{% endif %}">⏱️ Tatkal Quotas</a></li>
+            <li><a href="/admin/" target="_blank">⚙️ Django Admin</a></li>
+        </ul>
+        <div style="padding: 20px; margin-top:auto;">
+            <a href="{% url 'admin:logout' %}" style="color:#ffb3b3; text-decoration:none; font-size:0.9rem;">Logout System</a>
+        </div>
+    </div>
+
+    <div class="main-content fade-in">
+        <div class="header">
+            <h2>{% block page_title %}Overview{% endblock %}</h2>
+            <div>Current Admin: <strong>{{ request.user.username }}</strong></div>
+        </div>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="messages {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script>
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    </script>
+</body>
+</html>

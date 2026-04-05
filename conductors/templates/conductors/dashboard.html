@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<!-- Include html5-qrcode -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 data-i18n="dashboard_title">Dashboard</h2>
+        <a href="{% url 'conductor_logout' %}" class="btn btn-danger" style="font-size:0.8rem; padding:0.4rem;" data-i18n="logout">Logout</a>
+    </div>
+    
+    <div style="background:var(--primary-color); color:white; padding:15px; border-radius:8px; margin:15px 0;">
+        <h3>{{ bus.bus_number }}</h3>
+        <p style="margin:0; color:#eee;"><span data-i18n="route">Route</span>: {{ bus.route.name }}</p>
+    </div>
+
+    <div style="text-align:center; padding: 20px; border: 2px dashed var(--primary-color); border-radius: 8px;">
+        <h1 style="font-size: 3rem; color:var(--primary-color);" id="live_passengers_count">{{ active_count }}</h1>
+        <p data-i18n="live_passengers" style="font-weight:600; text-transform:uppercase;">Active Passengers</p>
+    </div>
+
+    <button id="scan_btn" class="btn btn-primary" style="margin-top: 20px;" onclick="startScanner()">
+        📷 <span data-i18n="scan_btn">Scan Ticket QR</span>
+    </button>
+    <button id="end_trip_btn" class="btn btn-danger" style="margin-top: 10px;" onclick="endTrip()">
+        🛑 <span data-i18n="end_trip">End Trip</span>
+    </button>
+
+    <div id="reader" style="display:none;"></div>
+    
+    <div id="scan_result" class="result-card" style="display:none;">
+        <h3 id="result_title"></h3>
+        <p id="result_names"></p>
+        <p id="result_stops"></p>
+        <input type="hidden" id="verified_uuid" value="">
+        <button id="mark_used_btn" class="btn btn-primary" style="margin-top:10px; display:none;" onclick="markAsUsed()" data-i18n="mark_used">Mark as Used</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let html5QrcodeScanner = null;
+    let isScanning = false;
+
+    // Polling interval for live count
+    setInterval(fetchLiveCount, 5000);
+    
+    async function fetchLiveCount() {
+        try {
+            const resp = await fetch("/conductor/count/{{ bus.id }}/");
+            const data = await resp.json();
+            document.getElementById('live_passengers_count').innerText = data.active_count;
+        } catch (e) {
+            console.error("Polling error", e);
+        }
+    }
+
+    function startScanner() {
+        if(isScanning) {
+            html5QrcodeScanner.clear().then(() => {
+                isScanning = false;
+                document.getElementById('reader').style.display = 'none';
+            });
+            return;
+        }
+
+        document.getElementById('reader').style.display = 'block';
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, onScanSuccess, onScanFailure)
+            .then(() => { isScanning = true; });
+    }
+
+    async function onScanSuccess(decodedText) {
+        // Stop scanner automatically gracefully
+        if(isScanning) {
+            html5QrcodeScanner.stop().then(() => {
+                isScanning = false;
+                document.getElementById('reader').style.display = 'none';
+            });
+        }
+        
+        // Post verify
+        const resp = await fetch('/conductor/verify/', {
+            method: 'POST',
+            body: JSON.stringify({ ticket_uuid: decodedText }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await resp.json();
+        const resDiv = document.getElementById('scan_result');
+        const rTitle = document.getElementById('result_title');
+        const rNames = document.getElementById('result_names');
+        const rStops = document.getElementById('result_stops');
+        const btnMark = document.getElementById('mark_used_btn');
+        
+        resDiv.style.display = 'block';
+        resDiv.className = data.valid ? 'result-card result-success fade-in' : 'result-card result-error fade-in';
+        rTitle.innerText = translations[currentLang][data.valid ? 'verify_success' : 'verify_error'] + (data.message ? ` - ${data.message}` : '');
+        
+        if (data.passenger_name) {
+            rNames.innerText = data.passenger_name;
+            rStops.innerText = `${data.from_stop} → ${data.to_stop}`;
+        } else {
+            rNames.innerText = "";
+            rStops.innerText = "";
+        }
+        
+        if (data.valid) {
+            document.getElementById('verified_uuid').value = decodedText;
+            btnMark.style.display = 'inline-block';
+        } else {
+            btnMark.style.display = 'none';
+        }
+    }
+
+    function onScanFailure(error) {
+        // handle scan failure
+    }
+    
+    async function markAsUsed() {
+        const uuid = document.getElementById('verified_uuid').value;
+        const btnMark = document.getElementById('mark_used_btn');
+        btnMark.disabled = true;
+        
+        const resp = await fetch('/conductor/expire/', {
+            method: 'POST',
+            body: JSON.stringify({ ticket_uuid: uuid }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await resp.json();
+        if (data.success) {
+            document.getElementById('scan_result').style.display = 'none';
+            fetchLiveCount(); // Refresh count quickly
+            alert('Ticket Successfully Marked as Used');
+        } else {
+            alert('Failed: ' + data.message);
+        }
+        btnMark.disabled = false;
+    }
+
+    async function endTrip() {
+        if (!confirm("Are you sure you want to end the trip? This will expire all active tickets.")) {
+            return;
+        }
+
+        const btnEnd = document.getElementById('end_trip_btn');
+        btnEnd.disabled = true;
+
+        const resp = await fetch('/conductor/end-trip/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await resp.json();
+        if (data.success) {
+            alert(`Trip Ended! Expired ${data.expired_count} ticket(s).`);
+            fetchLiveCount();
+        } else {
+            alert('Failed: ' + data.message);
+        }
+        btnEnd.disabled = false;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+django>=4.2,<5.0
+qrcode[pil]
+reportlab
+razorpay
+python-decouple
+Pillow

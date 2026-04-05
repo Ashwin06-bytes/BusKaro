@@ -1,0 +1,99 @@
+{% extends 'sysadmin/layout.html' %}
+
+{% block page_title %}Tatkal Quota Management{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3>Active Tatkal Quotas</h3>
+    <button class="btn-pay" style="width: auto; padding: 10px 20px; background: var(--primary-color);" onclick="openModal('addTatkalModal')">+ Add New Quota</button>
+</div>
+
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Source</th>
+            <th>Trip ID</th>
+            <th>Seats</th>
+            <th>Auto-Open Time</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for q in quotas %}
+        <tr>
+            <td><span class="badge" style="background:#e2e8f0; color:#475569;">{{ q.source|upper }}</span></td>
+            <td><code>{{ q.source_trip_id }}</code></td>
+            <td>{{ q.seats_booked }} / {{ q.seats_allocated }}</td>
+            <td>
+                {% if q.auto_open_time %}
+                    {{ q.auto_open_time|date:"Y-m-d H:i" }}
+                {% else %}
+                    <span style="color:#94a3b8;">Manual Only</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if q.is_open %}
+                    <span class="badge badge-active">OPEN</span>
+                {% else %}
+                    <span class="badge badge-expired">CLOSED</span>
+                {% endif %}
+            </td>
+            <td>
+                <form action="{% url 'sysadmin_toggle_tatkal' %}" method="POST" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="quota_id" value="{{ q.id }}">
+                    <button type="submit" class="btn-back" style="margin:0; padding:5px 10px; font-size:12px;">
+                        {% if q.is_open %}Close Quota{% else %}Open Now{% endif %}
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;">No Tatkal quotas defined yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Add Quota Modal -->
+<div id="addTatkalModal" class="modal">
+    <div class="modal-content" style="width: 500px;">
+        <h3>Add New Tatkal Quota</h3>
+        <form action="{% url 'sysadmin_add_tatkal' %}" method="POST">
+            {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; margin-bottom: 5px;">Provider Source</label>
+                <select name="source" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <option value="tnstc">TNSTC (Internal/Govt)</option>
+                    <option value="redbus">RedBus</option>
+                    <option value="abhibus">AbhiBus</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; margin-bottom: 5px;">Trip ID (matches search result ID)</label>
+                <input type="text" name="source_trip_id" placeholder="e.g. TNSTC-2026-04-06-101" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; margin-bottom: 5px;">Seats Allocated</label>
+                <input type="number" name="seats_allocated" value="5" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display:block; margin-bottom: 5px;">Auto-Open Timer (Optional)</label>
+                <input type="datetime-local" name="auto_open_time" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+                <small style="color: #64748b;">Leave blank to open immediately upon creation.</small>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-pay" style="flex:1; background: var(--primary-color);">Create Quota</button>
+                <button type="button" class="btn-back" style="flex:1;" onclick="closeModal('addTatkalModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-pay { border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; }
+    .btn-back { background: #e2e8f0; color: #475569; border: none; border-radius: 8px; padding: 10px; cursor: pointer; font-weight: bold; }
+    code { background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+</style>
+{% endblock %}

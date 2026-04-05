@@ -1,0 +1,73 @@
+{% extends 'sysadmin/layout.html' %}
+
+{% block page_title %}Bus Management{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <button class="btn btn-primary" onclick="openModal('addBusModal')" style="width: auto;">➕ Add New Bus</button>
+</div>
+
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Bus Number</th>
+            <th>Assigned Route</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bus in buses %}
+        <tr>
+            <td>{{ bus.id }}</td>
+            <td><strong>{{ bus.bus_number }}</strong></td>
+            <td>{{ bus.route.name }}</td>
+            <td>
+                {% if bus.is_active %}
+                <span style="color:var(--success); font-weight:600;">ACTIVE</span>
+                {% else %}
+                <span style="color:var(--danger); font-weight:600;">INACTIVE</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'sysadmin_bus_qr' bus.id %}" target="_blank" class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.8rem; border-radius:4px; margin-right:5px;">🖨️ QR</a>
+                <form action="{% url 'sysadmin_remove_bus' %}" method="POST" onsubmit="return confirm('WARNING: Removing a bus deletes all its history including Conductors associated. Confirm?');" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="bus_id" value="{{ bus.id }}">
+                    <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem; border-radius:4px;">Remove</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;">No buses tracked in system</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Add Modal -->
+<div id="addBusModal" class="modal">
+    <div class="modal-content fade-in">
+        <h3 style="margin-bottom:20px;">Add New Bus</h3>
+        <form action="{% url 'sysadmin_buses' %}" method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Bus Registration Target (e.g. TN 38 XX)</label>
+                <input type="text" name="bus_number" required>
+            </div>
+            <div class="form-group">
+                <label>Assign to Route</label>
+                <select name="route_id" required>
+                    {% for r in routes %}
+                    <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addBusModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Bus</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

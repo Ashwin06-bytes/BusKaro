@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card fade-in" style="margin-top:20px; text-align:center;">
+    <div class="card-header">
+        <h2 data-i18n="status_title">Ticket Status</h2>
+        {% if ticket.status == 'ACTIVE' %}
+            <span class="badge badge-active">ACTIVE</span>
+        {% else %}
+            <span class="badge badge-expired">EXPIRED</span>
+        {% endif %}
+    </div>
+
+    <div class="qr-wrapper">
+        <img src="{{ ticket.qr_image.url }}" alt="QR Code" width="200" height="200">
+    </div>
+
+    <h3 style="color:var(--primary-color);">{{ ticket.bus.bus_number }}</h3>
+    <p class="text-muted"><span data-i18n="route">Route</span>: {{ ticket.bus.route.name }}</p>
+
+    <div style="text-align:left; background:#FAFAFA; padding:15px; border-radius:8px; margin: 15px 0;">
+        <p><strong><span data-i18n="pass_name">Name</span>:</strong> {{ ticket.passenger_name }}</p>
+        <p><strong><span data-i18n="from_stop">From</span>:</strong> 
+            <span class="lang-en">{{ ticket.from_stop.name }}</span>
+            <span class="lang-ta" style="display:none;">{{ ticket.from_stop.name_tamil }}</span>
+        </p>
+        <p><strong><span data-i18n="to_stop">To</span>:</strong> 
+            <span class="lang-en">{{ ticket.to_stop.name }}</span>
+            <span class="lang-ta" style="display:none;">{{ ticket.to_stop.name_tamil }}</span>
+        </p>
+        <p><strong><span data-i18n="live_fare">Fare</span>:</strong> ₹ {{ ticket.fare_amount }}</p>
+        <p><strong><span data-i18n="date_time">Date/Time</span>:</strong> {{ ticket.created_at|date:"Y-m-d H:i" }}</p>
+        <p style="font-size:0.8rem; color:#888; word-break: break-all;"><strong><span data-i18n="ticket_id">Ticket ID</span>:</strong> {{ ticket.ticket_id }}</p>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+        <a id="btn_download_pdf" href="{% url 'download_pdf' ticket.ticket_id %}" class="btn btn-secondary" style="flex:1;"><span data-i18n="download_pdf">Download PDF</span></a>
+        <a href="{{ ticket.qr_image.url }}" download class="btn btn-secondary" style="flex:1;"><span data-i18n="save_qr">Save QR</span></a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Handles language translation toggles intelligently mapping to our dictionaries
+    function updateBilingualValues() {
+        if(currentLang === 'ta'){
+            document.querySelectorAll('.lang-en').forEach(el=>el.style.display='none');
+            document.querySelectorAll('.lang-ta').forEach(el=>el.style.display='inline');
+        } else {
+            document.querySelectorAll('.lang-ta').forEach(el=>el.style.display='none');
+            document.querySelectorAll('.lang-en').forEach(el=>el.style.display='inline');
+        }
+    }
+    window.addEventListener('languageChanged', updateBilingualValues);
+    document.addEventListener("DOMContentLoaded", () => {
+        updateBilingualValues();
+        
+        // Auto-download PDF feature (if not manually clicked, triggered after 1.5 seconds)
+        setTimeout(() => {
+            const pdfBtn = document.getElementById('btn_download_pdf');
+            if(pdfBtn) {
+                // We create a temporary hidden iframe so we don't accidentally navigate the user away on load
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = pdfBtn.href;
+                document.body.appendChild(iframe);
+            }
+        }, 1500);
+    });
+</script>
+{% endblock %}

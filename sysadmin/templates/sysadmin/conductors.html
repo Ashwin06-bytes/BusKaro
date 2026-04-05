@@ -1,0 +1,93 @@
+{% extends 'sysadmin/layout.html' %}
+
+{% block page_title %}Conductor Staff Management{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <button class="btn btn-primary" onclick="openModal('addConductorModal')" style="width: auto;">➕ Register New Staff</button>
+</div>
+
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>EMP ID</th>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Active Bus Assignment</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cond in conductors %}
+        <tr>
+            <td><strong>{{ cond.employee_id }}</strong></td>
+            <td>{{ cond.user.first_name }}</td>
+            <td>@{{ cond.user.username }}</td>
+            <td>
+                {% if cond.bus %}
+                <span style="color:var(--primary-color); font-weight:600;">{{ cond.bus.bus_number }}</span><br>
+                <small class="text-muted">{{ cond.bus.route.name }}</small>
+                {% else %}
+                <span class="text-muted">No specific bus</span>
+                {% endif %}
+            </td>
+            <td>
+                <form action="{% url 'sysadmin_remove_conductor' %}" method="POST" onsubmit="return confirm('WARNING: Are you sure you wish to terminate and remove this conductor from the system?');" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="conductor_id" value="{{ cond.id }}">
+                    <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem; border-radius:4px;">Terminate</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;">No conductors found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Add Staff Modal -->
+<div id="addConductorModal" class="modal">
+    <div class="modal-content fade-in" style="width: 500px;">
+        <h3 style="margin-bottom:20px;">Register New Conductor</h3>
+        <form action="{% url 'sysadmin_conductors' %}" method="POST">
+            {% csrf_token %}
+            <div style="display:flex; gap:15px;">
+                <div class="form-group" style="flex:1;">
+                    <label>First Name (Display Name)</label>
+                    <input type="text" name="first_name" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Employee ID</label>
+                    <input type="text" name="employee_id" required placeholder="EMP-XXX">
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:15px;">
+                <div class="form-group" style="flex:1;">
+                    <label>System Username</label>
+                    <input type="text" name="username" required minlength="4">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Password (Temporary)</label>
+                    <input type="text" name="password" required minlength="6" value="demo1234">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Initial Bus Assignment (Optional)</label>
+                <select name="bus_id">
+                    <option value="">-- None --</option>
+                    {% for b in buses %}
+                    <option value="{{ b.id }}">{{ b.bus_number }} ({{ b.route.name }})</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Conductors can dynamically change this when they log into their app dashboard.</small>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addConductorModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:2;">Register Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

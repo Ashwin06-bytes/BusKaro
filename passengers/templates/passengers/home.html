@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card fade-in">
+    <div class="card-header text-center">
+        <!-- Display Header and Bus Info -->
+        <h2 data-i18n="title_book">Book Ticket</h2>
+        <p class="text-muted"><span data-i18n="bus_no">Bus No</span>: <strong>{{ bus.bus_number }}</strong></p>
+        <p class="text-muted" style="margin-top:-10px"><span data-i18n="route">Route</span>: {{ bus.route.name }}</p>
+    </div>
+
+
+
+    <form id="payment_form" onsubmit="handlePaymentSubmit(event)">
+        <div class="form-group">
+            <label data-i18n="from_stop">From Stop</label>
+            <select id="from_stop" required onchange="onFromStopChange()">
+                <option value="" data-i18n="select_stop">-- Select Stop --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="to_stop">To Stop</label>
+            <select id="to_stop" required onchange="onToStopChange()">
+                <option value="" data-i18n="select_stop">-- Select Stop --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="pass_name">Passenger Name</label>
+            <input type="text" id="passenger_name" required placeholder="Name" data-i18n-placeholder="pass_name">
+        </div>
+
+        <div class="form-group">
+            <label data-i18n="pass_phone">Phone Number</label>
+            <input type="tel" id="passenger_phone" required pattern="[0-9]{10}" placeholder="Phone" data-i18n-placeholder="pass_phone">
+        </div>
+
+        <div class="live-fare">
+            <span data-i18n="live_fare">Fare</span>: <span id="live_fare_display">₹ 0.00</span>
+            <input type="hidden" id="live_fare_input" value="0">
+        </div>
+
+        <button type="submit" id="pay_btn" class="btn btn-primary" data-i18n="pay_now">Pay Now</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        initPassengerFlow({{ bus.id }});
+    });
+</script>
+{% endblock %}
+
+

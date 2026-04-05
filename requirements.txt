@@ -4,3 +4,11 @@ reportlab
 razorpay
 python-decouple
 Pillow
+gunicorn
+psycopg2-binary
+django-channels
+channels-redis
+celery
+redis
+whitenoise
+dj-database-url

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Passenger Login{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 40px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <h2 style="text-align: center; color: var(--primary); margin-bottom: 20px;">Passenger Login</h2>
+    
+    {% if messages %}
+    <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div style="padding: 10px; background: #fee2e2; color: #b91c1c; border-radius: 4px; text-align: center;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; color: var(--subtext); font-weight: bold;">Phone Number</label>
+            <input type="text" name="phone" required placeholder="Enter your 10-digit phone number"
+                   style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); box-sizing: border-box;">
+        </div>
+        
+        <div style="margin-bottom: 25px;">
+            <label style="display: block; margin-bottom: 5px; color: var(--subtext); font-weight: bold;">Password</label>
+            <input type="password" name="password" required placeholder="Enter your password"
+                   style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); box-sizing: border-box;">
+        </div>
+        
+        <button type="submit" class="book-btn" style="width: 100%; font-size: 1.1rem; padding: 12px;">Login</button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 20px; color: var(--subtext);">
+        Don't have an account? <a href="{% url 'passenger_register' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" style="color: var(--primary); text-decoration: none; font-weight: bold;">Register here</a>
+    </div>
+</div>
+{% endblock %}

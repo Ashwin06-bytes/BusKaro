@@ -6,6 +6,7 @@ class Ticket(models.Model):
     STATUS_CHOICES = [
         ('ACTIVE', 'Active'),
         ('EXPIRED', 'Expired'),
+        ('CANCELLED', 'Cancelled'),
     ]
 
     booking = models.ForeignKey('bookings.Booking', null=True, blank=True, on_delete=models.SET_NULL, related_name='tickets')
@@ -27,6 +28,7 @@ class Ticket(models.Model):
     
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
     created_at = models.DateTimeField(auto_now_add=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Ticket {self.ticket_id} - {self.passenger_name} ({self.status})"

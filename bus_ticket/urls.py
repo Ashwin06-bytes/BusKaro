@@ -14,6 +14,7 @@ urlpatterns = [
     path('sysadmin/', include('sysadmin.urls')),
     path('search/', include('search.urls')),
     path('aggregator/', include('aggregator.urls')),
+    path('tracking/', include('tracking.urls')),
 ]
 
 if settings.DEBUG:

@@ -24,6 +24,39 @@
         .btn-green { background-color: #16a34a; color: white; }
         .btn-green:hover { background-color: #15803d; }
         .header { margin-bottom: 40px; }
+        .stop-dropdown {
+            display: none;
+            position: absolute;
+            left: 0; right: 0;
+            top: 100%;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stop-dropdown .stop-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+        .stop-dropdown .stop-item:hover {
+            background: #f0f9ff;
+        }
+        .stop-dropdown .stop-item .tamil {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-left: 6px;
+        }
+        .stop-dropdown .no-results {
+            padding: 10px 12px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +104,10 @@
             <form action="/search/" method="GET" style="margin-top: 20px; text-align: left;" onsubmit="return validateSearchForm(this);">
                 <script>
                     function validateSearchForm(form) {
+                        if (!form.origin.value || !form.destination.value) {
+                            alert("Please select both Origin and Destination stops.");
+                            return false;
+                        }
                         if (form.origin.value === form.destination.value) {
                             alert("Origin and Destination cannot be the same. Please select a different Destination.");
                             return false;
@@ -86,31 +123,19 @@
                         return true;
                     }
                 </script>
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; position: relative;">
                     <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Origin</label>
-                    <select name="origin" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                        <option value="" disabled selected>-- Select Origin --</option>
-                        <option value="Chennai">Chennai</option>
-                        <option value="Coimbatore">Coimbatore</option>
-                        <option value="Madurai">Madurai</option>
-                        <option value="Trichy">Trichy</option>
-                        <option value="Salem">Salem</option>
-                        <option value="Bangalore">Bangalore</option>
-                        <option value="Hyderabad">Hyderabad</option>
-                    </select>
+                    <input type="hidden" name="origin" id="origin-value">
+                    <input type="text" id="origin-input" placeholder="Type to search stops..." autocomplete="off"
+                           style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; font-family: inherit;">
+                    <div id="origin-dropdown" class="stop-dropdown"></div>
                 </div>
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; position: relative;">
                     <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Destination</label>
-                    <select name="destination" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                        <option value="" disabled selected>-- Select Destination --</option>
-                        <option value="Chennai">Chennai</option>
-                        <option value="Coimbatore">Coimbatore</option>
-                        <option value="Madurai">Madurai</option>
-                        <option value="Trichy">Trichy</option>
-                        <option value="Salem">Salem</option>
-                        <option value="Bangalore">Bangalore</option>
-                        <option value="Hyderabad">Hyderabad</option>
-                    </select>
+                    <input type="hidden" name="destination" id="destination-value">
+                    <input type="text" id="destination-input" placeholder="Type to search stops..." autocomplete="off"
+                           style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; font-family: inherit;">
+                    <div id="destination-dropdown" class="stop-dropdown"></div>
                 </div>
                 <div style="margin-bottom: 25px;">
                     <label style="display:block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;">Date of Journey</label>
@@ -155,6 +180,69 @@
         function onScanError(errorMessage) {
             // handle scanning iteration errors silently
         }
+    </script>
+    <script>
+        // Stop autocomplete logic
+        function setupAutocomplete(inputId, hiddenId, dropdownId) {
+            const input = document.getElementById(inputId);
+            const hidden = document.getElementById(hiddenId);
+            const dropdown = document.getElementById(dropdownId);
+            let debounceTimer = null;
+
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                hidden.value = ''; // Clear selection when typing
+                const query = input.value.trim();
+                if (query.length < 1) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+                debounceTimer = setTimeout(() => fetchStops(query, dropdown, input, hidden), 250);
+            });
+
+            input.addEventListener('focus', () => {
+                if (dropdown.children.length > 0 && input.value.trim().length >= 1) {
+                    dropdown.style.display = 'block';
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        async function fetchStops(query, dropdown, input, hidden) {
+            try {
+                const res = await fetch(`/search/cities/?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                dropdown.innerHTML = '';
+
+                if (data.results.length === 0) {
+                    dropdown.innerHTML = '<div class="no-results">No cities found</div>';
+                } else {
+                    data.results.forEach(stop => {
+                        const item = document.createElement('div');
+                        item.className = 'stop-item';
+                        item.innerHTML = `<strong>${stop.name}</strong><span class="tamil">${stop.name_tamil}</span>`;
+                        item.addEventListener('click', () => {
+                            input.value = stop.name;
+                            hidden.value = stop.name;
+                            dropdown.style.display = 'none';
+                        });
+                        dropdown.appendChild(item);
+                    });
+                }
+                dropdown.style.display = 'block';
+            } catch (err) {
+                console.error('Stop search error:', err);
+            }
+        }
+
+        // Initialize both autocomplete fields
+        setupAutocomplete('origin-input', 'origin-value', 'origin-dropdown');
+        setupAutocomplete('destination-input', 'destination-value', 'destination-dropdown');
     </script>
 </body>
 </html>

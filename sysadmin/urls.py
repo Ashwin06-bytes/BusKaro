@@ -11,4 +11,6 @@ urlpatterns = [
     path('tatkal/', views.manage_tatkal, name='sysadmin_tatkal'),
     path('tatkal/add/', views.add_tatkal, name='sysadmin_add_tatkal'),
     path('tatkal/toggle/', views.toggle_tatkal, name='sysadmin_toggle_tatkal'),
+    path('export/csv/', views.export_revenue_csv, name='sysadmin_export_csv'),
+    path('export/pdf/', views.export_revenue_pdf, name='sysadmin_export_pdf'),
 ]

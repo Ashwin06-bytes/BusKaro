@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .tracking-card {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+        text-align: center;
+    }
+
+    .bus-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 1.5rem;
+    }
+    .bus-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--text-main);
+    }
+
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--text-muted);
+        display: inline-block;
+        transition: background 0.3s;
+    }
+    .status-dot.connected {
+        background: var(--success);
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
+        animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+        0%, 100% { box-shadow: 0 0 4px rgba(39, 174, 96, 0.3); }
+        50% { box-shadow: 0 0 12px rgba(39, 174, 96, 0.7); }
+    }
+
+    .location-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 1.5rem 0;
+    }
+
+    .coord-box {
+        background: #f8faf9;
+        border: 1px solid var(--border-color);
+        border-radius: var(--input-radius);
+        padding: 1rem;
+        text-align: center;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .coord-box.flash {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(15, 110, 86, 0.1);
+    }
+    .coord-box label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        font-weight: 700;
+    }
+    .coord-box .value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        font-family: 'Courier New', monospace;
+    }
+
+    .meta-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-top: 1px solid var(--border-color);
+        font-size: 0.9rem;
+    }
+    .meta-row .label { color: var(--text-muted); font-weight: 600; }
+    .meta-row .data { color: var(--text-main); }
+
+    .status-banner {
+        padding: 10px 16px;
+        border-radius: var(--input-radius);
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+    .status-connecting {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffc107;
+    }
+    .status-live {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .status-offline {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .update-counter {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 12px;
+    }
+
+    .compass-indicator {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid var(--primary-color);
+        margin: 0 auto 1rem;
+        position: relative;
+        background: radial-gradient(circle at 50% 50%, #f0faf6, #ffffff);
+    }
+    .compass-indicator::after {
+        content: '🚌';
+        font-size: 2rem;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tracking-card fade-in" style="margin-top: 20px;">
+    <div class="compass-indicator"></div>
+
+    <div class="bus-header">
+        <span class="status-dot" id="status-dot"></span>
+        <h2>{{ bus.bus_number }}</h2>
+    </div>
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">{{ bus.route.name }}</p>
+
+    <div id="status-banner" class="status-banner status-connecting">
+        ⏳ Connecting to live feed...
+    </div>
+
+    <div class="location-grid">
+        <div class="coord-box" id="lat-box">
+            <label>Latitude</label>
+            <div class="value" id="lat-value">
+                {% if latest %}{{ latest.latitude }}{% else %}--{% endif %}
+            </div>
+        </div>
+        <div class="coord-box" id="lng-box">
+            <label>Longitude</label>
+            <div class="value" id="lng-value">
+                {% if latest %}{{ latest.longitude }}{% else %}--{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="meta-row">
+        <span class="label">Bus Type</span>
+        <span class="data">{{ bus.get_bus_type_display }}</span>
+    </div>
+    <div class="meta-row">
+        <span class="label">Operator</span>
+        <span class="data">{{ bus.get_operator_type_display }}</span>
+    </div>
+    <div class="meta-row">
+        <span class="label">Last Updated</span>
+        <span class="data" id="last-updated">
+            {% if latest %}{{ latest.updated_at|date:"Y-m-d H:i:s" }}{% else %}No data yet{% endif %}
+        </span>
+    </div>
+
+    <div class="update-counter" id="update-counter">
+        Updates received: <strong id="update-count">0</strong>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const busId = {{ bus.id }};
+    let updateCount = 0;
+    let socket = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
+    const reconnectDelay = 3000;
+
+    const latValue = document.getElementById('lat-value');
+    const lngValue = document.getElementById('lng-value');
+    const latBox = document.getElementById('lat-box');
+    const lngBox = document.getElementById('lng-box');
+    const lastUpdated = document.getElementById('last-updated');
+    const updateCountEl = document.getElementById('update-count');
+    const statusDot = document.getElementById('status-dot');
+    const statusBanner = document.getElementById('status-banner');
+
+    function setStatus(type, message) {
+        statusBanner.className = 'status-banner';
+        if (type === 'live') {
+            statusBanner.classList.add('status-live');
+            statusDot.classList.add('connected');
+        } else if (type === 'offline') {
+            statusBanner.classList.add('status-offline');
+            statusDot.classList.remove('connected');
+        } else {
+            statusBanner.classList.add('status-connecting');
+            statusDot.classList.remove('connected');
+        }
+        statusBanner.textContent = message;
+    }
+
+    function flashBox(box) {
+        box.classList.add('flash');
+        setTimeout(() => box.classList.remove('flash'), 800);
+    }
+
+    function formatDateTime(isoString) {
+        const d = new Date(isoString);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const wsUrl = `${protocol}://${window.location.host}/ws/tracking/${busId}/`;
+
+        setStatus('connecting', '⏳ Connecting to live feed...');
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+            reconnectAttempts = 0;
+            setStatus('live', '🟢 Live — Receiving real-time updates');
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'location_update') {
+                // Update coordinate values with animation
+                latValue.textContent = data.latitude.toFixed(6);
+                lngValue.textContent = data.longitude.toFixed(6);
+                flashBox(latBox);
+                flashBox(lngBox);
+
+                // Update timestamp
+                lastUpdated.textContent = formatDateTime(data.updated_at);
+
+                // Update counter
+                updateCount++;
+                updateCountEl.textContent = updateCount;
+            }
+        };
+
+        socket.onclose = (event) => {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                setStatus('offline', `🔴 Disconnected — Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                setTimeout(connectWebSocket, reconnectDelay);
+            } else {
+                setStatus('offline', '🔴 Connection lost. Please refresh the page.');
+            }
+        };
+
+        socket.onerror = () => {
+            socket.close();
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', connectWebSocket);
+</script>
+{% endblock %}

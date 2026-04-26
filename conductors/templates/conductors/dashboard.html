@@ -6,6 +6,11 @@
 {% endblock %}
 
 {% block content %}
+<div id="pwa-install-banner" style="display: none; background: #c0392b; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+    <p style="margin: 0 0 10px 0; font-weight: bold;">Install Busify Conductor App for Offline Access</p>
+    <button id="pwa-install-btn" style="background: white; color: #c0392b; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">Install App</button>
+</div>
+
 <div class="card fade-in">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h2 data-i18n="dashboard_title">Dashboard</h2>
@@ -44,6 +49,24 @@
 
 {% block extra_scripts %}
 <script>
+    let deferredPrompt;
+    const installBanner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('pwa-install-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBanner.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', (e) => {
+        installBanner.style.display = 'none';
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            deferredPrompt = null;
+        });
+    });
+
     let html5QrcodeScanner = null;
     let isScanning = false;
 

@@ -27,6 +27,16 @@
             <p><strong>Date:</strong> {{ date }}</p>
             <p><strong>Total Fare:</strong> ₹{{ fare }}</p>
         </div>
+        <div id="upi_payment_section" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; text-align: center;">
+            <h3 style="margin-top: 0; color: #334155; font-size: 1.1rem;">Scan to Pay</h3>
+            <div id="upi_qr_code" style="display: inline-block; padding: 10px; background: white; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 15px;"></div>
+            <p style="margin: 0 0 15px 0; color: #64748b; font-size: 0.9rem;">After paying, please enter the Transaction ID below.</p>
+            
+            <div style="text-align: left; margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold; color: var(--subtext);">Transaction ID (Pay for ID)</label>
+                <input type="text" id="transaction_id" placeholder="Enter UPI Transaction ID" style="width: 100%; padding: 10px; border-radius: 6px; border: 2px solid #2563eb; box-sizing: border-box;">
+            </div>
+        </div>
         
         <button class="btn-pay" onclick="generateTicket()">Pay ₹{{ fare }} & Generate Ticket</button>
         <div id="success-box" class="ticket-success">
@@ -69,12 +79,32 @@
             html2pdf().set(opt).from(element).save();
         }
 
+        document.addEventListener("DOMContentLoaded", () => {
+            const upiString = `upi://pay?pa=ashwinsenthil14@okicici&pn=Ashwin%20S&am={{ fare }}&cu=INR`;
+            new QRCode(document.getElementById("upi_qr_code"), {
+                text: upiString,
+                width: 150,
+                height: 150,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        });
+
         function generateTicket() {
+            const transactionId = document.getElementById('transaction_id').value.trim();
+            if (!transactionId) {
+                alert("Please scan the QR code to pay, and enter the Transaction ID before generating the ticket.");
+                document.getElementById('transaction_id').focus();
+                return;
+            }
+
             document.getElementById('success-box').style.display = 'block';
+            document.getElementById('upi_payment_section').style.display = 'none';
             const generatedPnr = 'PNR-' + Math.floor(Math.random() * 10000000);
             document.getElementById('pnr').innerText = generatedPnr;
             
-            const qrData = `PNR: ${generatedPnr} | From: {{ origin }} | To: {{ destination }} | Date: {{ date }}`;
+            const qrData = `PNR: ${generatedPnr} | From: {{ origin }} | To: {{ destination }} | Date: {{ date }} | Txn: ${transactionId}`;
             document.getElementById('qr-code').innerHTML = "";
             new QRCode(document.getElementById("qr-code"), {
                 text: qrData,

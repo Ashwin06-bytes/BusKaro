@@ -12,6 +12,11 @@ from routes.models import Bus, Route
 from conductors.models import Conductor
 from tickets.models import Ticket
 from tatkal.models import TatkalQuota
+import csv
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from django.utils.dateparse import parse_date
 
 def is_sysadmin(user):
     return user.is_authenticated and (user.is_staff or user.is_superuser)
@@ -167,3 +172,92 @@ def toggle_tatkal(request):
         quota.save()
         messages.success(request, f"Tatkal status toggled for {quota.source} trip {quota.source_trip_id}.")
     return redirect('sysadmin_tatkal')
+
+@user_passes_test(is_sysadmin, login_url='/admin/login/')
+def export_revenue_csv(request):
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    
+    tickets = Ticket.objects.filter(status__in=['ACTIVE', 'EXPIRED']).select_related('bus', 'bus__route')
+    
+    if from_date_str:
+        from_date = parse_date(from_date_str)
+        if from_date:
+            tickets = tickets.filter(created_at__date__gte=from_date)
+    if to_date_str:
+        to_date = parse_date(to_date_str)
+        if to_date:
+            tickets = tickets.filter(created_at__date__lte=to_date)
+            
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="revenue_export.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['ticket_uuid', 'bus_number', 'route', 'passenger_fare', 'payment_id', 'created_at'])
+    
+    for t in tickets:
+        writer.writerow([
+            t.ticket_id,
+            t.bus.bus_number if t.bus else '',
+            t.bus.route.name if t.bus and t.bus.route else '',
+            t.fare_amount,
+            t.payment_id or '',
+            t.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+        
+    return response
+
+@user_passes_test(is_sysadmin, login_url='/admin/login/')
+def export_revenue_pdf(request):
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    
+    tickets = Ticket.objects.filter(status__in=['ACTIVE', 'EXPIRED']).select_related('bus', 'bus__route')
+    
+    if from_date_str:
+        from_date = parse_date(from_date_str)
+        if from_date:
+            tickets = tickets.filter(created_at__date__gte=from_date)
+    if to_date_str:
+        to_date = parse_date(to_date_str)
+        if to_date:
+            tickets = tickets.filter(created_at__date__lte=to_date)
+            
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="revenue_export.pdf"'
+    
+    doc = SimpleDocTemplate(response, pagesize=letter)
+    elements = []
+    
+    data = [['ticket_uuid', 'bus_number', 'route', 'passenger_fare', 'payment_id', 'created_at']]
+    total_fare = 0.0
+    
+    for t in tickets:
+        data.append([
+            str(t.ticket_id)[:8] + '...',
+            t.bus.bus_number if t.bus else '',
+            (t.bus.route.name[:15] + '...') if (t.bus and t.bus.route and len(t.bus.route.name) > 15) else (t.bus.route.name if t.bus and t.bus.route else ''),
+            f"{t.fare_amount}",
+            (t.payment_id[:10] + '...') if (t.payment_id and len(t.payment_id) > 10) else (t.payment_id or ''),
+            t.created_at.strftime('%Y-%m-%d %H:%M')
+        ])
+        total_fare += float(t.fare_amount)
+        
+    data.append(['', '', 'TOTAL', f"{total_fare:.2f}", '', ''])
+    
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+    ]))
+    
+    elements.append(table)
+    doc.build(elements)
+    
+    return response

@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.core.cache import cache
+from django.contrib.auth.decorators import login_required
 from aggregator.adapters.internal import InternalAdapter
 from aggregator.adapters.tnstc import TNSTCAdapter
 from aggregator.adapters.redbus import RedbusAdapter
@@ -95,14 +96,24 @@ def aggregated_search(request):
                     sched = Schedule.objects.get(id=int(source_trip_id))
                     if hasattr(sched.bus.route, 'operator_type'):
                         pass
-                    # If we had operator mapped to schedule properly, we could fetch custom config.
-                    # As a simplified approach for internal schedules, if we have a config we use it.
-                    # Since Operator is decoupled in existing app structure, let's look up if there's any matching.
                 except Exception:
                     pass
             
             base_fare = float(result.get('fare', 0))
             result['tatkal_fare'] = round(base_fare * (1 + float(surcharge_percent) / 100), 2)
+        elif result.get('is_dummy'):
+            # Simulate tatkal for 1/3rd of dummy buses so the frontend filter works
+            try:
+                trip_num = int(str(source_trip_id).split('-')[-1])
+                if trip_num % 3 == 0:
+                    result['tatkal_open'] = True
+                    result['tatkal_fare'] = round(float(result.get('fare', 0)) * 1.25, 2)
+                else:
+                    result['tatkal_open'] = False
+                    result['tatkal_fare'] = None
+            except ValueError:
+                result['tatkal_open'] = False
+                result['tatkal_fare'] = None
         else:
             result['tatkal_open'] = False
             result['tatkal_fare'] = None
@@ -132,6 +143,7 @@ def aggregated_search(request):
         "sources_queried": sources_queried
     })
 
+@login_required(login_url='/passenger/login/')
 def dummy_booking(request, source_name, trip_id):
     fare = request.GET.get('fare', '0')
     origin = request.GET.get('origin', '')

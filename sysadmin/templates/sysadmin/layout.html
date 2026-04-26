@@ -98,7 +98,10 @@
 </head>
 <body>
     <div class="sidebar">
-        <div class="sidebar-header">TNSTC Dashboard</div>
+        <div class="sidebar-header" style="display: flex; align-items: center; gap: 10px;">
+            <img src="/static/images/logo.png" alt="Busify Logo" style="height: 30px; border-radius: 6px; background: white; padding: 2px;">
+            <span>Busify Admin</span>
+        </div>
         <ul class="nav-links">
             <li><a href="{% url 'sysadmin_dashboard' %}" class="{% if request.resolver_match.url_name == 'sysadmin_dashboard' %}active{% endif %}">📊 Overview</a></li>
             <li><a href="{% url 'sysadmin_buses' %}" class="{% if request.resolver_match.url_name == 'sysadmin_buses' %}active{% endif %}">🚌 Buses</a></li>

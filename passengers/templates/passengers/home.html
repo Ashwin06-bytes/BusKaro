@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="card fade-in">
     <div class="card-header text-center">
@@ -36,12 +40,24 @@
             <input type="tel" id="passenger_phone" required pattern="[0-9]{10}" placeholder="Phone" data-i18n-placeholder="pass_phone">
         </div>
 
-        <div class="live-fare">
+        <div class="live-fare" style="margin-bottom: 20px;">
             <span data-i18n="live_fare">Fare</span>: <span id="live_fare_display">₹ 0.00</span>
             <input type="hidden" id="live_fare_input" value="0">
         </div>
 
-        <button type="submit" id="pay_btn" class="btn btn-primary" data-i18n="pay_now">Pay Now</button>
+        <!-- UPI Payment Section -->
+        <div id="upi_payment_section" style="display: none; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; text-align: center;">
+            <h3 style="margin-top: 0; color: #334155; font-size: 1.1rem;">Scan to Pay</h3>
+            <div id="upi_qr_code" style="display: inline-block; padding: 10px; background: white; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 15px;"></div>
+            <p style="margin: 0 0 15px 0; color: #64748b; font-size: 0.9rem;">After paying, please enter the Transaction ID below.</p>
+            
+            <div class="form-group" style="text-align: left;">
+                <label>Transaction ID (Pay for ID)</label>
+                <input type="text" id="transaction_id" placeholder="Enter UPI Transaction ID" style="border: 2px solid #2563eb;">
+            </div>
+        </div>
+
+        <button type="submit" id="pay_btn" class="btn btn-primary" data-i18n="pay_now">Generate Ticket</button>
     </form>
 </div>
 {% endblock %}

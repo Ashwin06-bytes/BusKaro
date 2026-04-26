@@ -29,6 +29,24 @@
     </div>
 </div>
 
+<div class="card fade-in" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; background: white; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; margin-bottom: 10px;">Export Revenue Analytics</h3>
+    <form method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="display: flex; flex-direction: column;">
+            <label for="from_date" style="font-size: 0.85rem; color: #555; font-weight: bold; margin-bottom: 5px;">From Date</label>
+            <input type="date" name="from_date" id="from_date" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        </div>
+        <div style="display: flex; flex-direction: column;">
+            <label for="to_date" style="font-size: 0.85rem; color: #555; font-weight: bold; margin-bottom: 5px;">To Date</label>
+            <input type="date" name="to_date" id="to_date" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" formaction="{% url 'sysadmin_export_csv' %}" class="btn" style="background: #28a745; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Export CSV</button>
+            <button type="submit" formaction="{% url 'sysadmin_export_pdf' %}" class="btn" style="background: #dc3545; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Export PDF</button>
+        </div>
+    </form>
+</div>
+
 <div class="metrics-grid fade-in">
     <div class="metric-card" style="flex:2;">
         <h3>Daily Revenue Breakdown (Last 7 Days)</h3>

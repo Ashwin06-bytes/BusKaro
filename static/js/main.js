@@ -62,38 +62,55 @@ function onToStopChange() {
         const fare = cachedFares[key] || 0;
         document.getElementById('live_fare_display').innerText = `₹ ${fare.toFixed(2)}`;
         document.getElementById('live_fare_input').value = fare;
+        
+        // Generate UPI QR Code
+        const qrContainer = document.getElementById('upi_qr_code');
+        const upiSection = document.getElementById('upi_payment_section');
+        
+        if (qrContainer && upiSection && fare > 0) {
+            qrContainer.innerHTML = "";
+            const upiString = `upi://pay?pa=ashwinsenthil14@okicici&pn=Ashwin%20S&am=${fare.toFixed(2)}&cu=INR`;
+            new QRCode(qrContainer, {
+                text: upiString,
+                width: 150,
+                height: 150,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            upiSection.style.display = 'block';
+        } else if (upiSection) {
+            upiSection.style.display = 'none';
+        }
     }
 }
 
 async function handlePaymentSubmit(event) {
     event.preventDefault();
-    const btn = document.getElementById('pay_btn');
-    btn.disabled = true;
-    btn.innerText = "Processing...";
     
     const amount = document.getElementById('live_fare_input').value;
     const fromStop = document.getElementById('from_stop').value;
     const toStop = document.getElementById('to_stop').value;
     const passengerName = document.getElementById('passenger_name').value;
     const passengerPhone = document.getElementById('passenger_phone').value;
+    const transactionId = document.getElementById('transaction_id') ? document.getElementById('transaction_id').value.trim() : null;
     
     if (!amount || amount == '0') {
         alert("Please select valid stops");
-        btn.disabled = false;
-        btn.innerText = translations[currentLang]['pay_now'];
         return;
     }
     
+    if (document.getElementById('transaction_id') && !transactionId) {
+        alert("Please scan the QR code to pay, and enter the Transaction ID before generating the ticket.");
+        document.getElementById('transaction_id').focus();
+        return;
+    }
+
+    const btn = document.getElementById('pay_btn');
+    btn.disabled = true;
+    btn.innerText = "Processing...";
+    
     try {
-        // Dummy create order API
-        const orderResp = await fetch('/payments/create-order/', {
-            method: 'POST',
-            body: JSON.stringify({ amount: amount }),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const orderData = await orderResp.json();
-        
-        // Simulating immediate success by sending right back to verify payment
         const verifyResp = await fetch('/payments/verify/', {
             method: 'POST',
             body: JSON.stringify({
@@ -103,8 +120,7 @@ async function handlePaymentSubmit(event) {
                 passenger_name: passengerName,
                 passenger_phone: passengerPhone,
                 amount: amount,
-                razorpay_order_id: orderData.order_id,
-                razorpay_payment_id: "pay_mock_" + Math.floor(Math.random() * 100000)
+                razorpay_payment_id: transactionId || "pay_mock_" + Math.floor(Math.random() * 100000)
             }),
             headers: { 'Content-Type': 'application/json' }
         });
@@ -113,14 +129,14 @@ async function handlePaymentSubmit(event) {
         if (verifyData.success) {
             window.location.href = `/tickets/${verifyData.ticket_id}/`;
         } else {
-            alert("Payment failed!");
+            alert("Payment verification failed!");
         }
     } catch (e) {
         console.error(e);
-        alert("An error occurred during payment.");
+        alert("An error occurred while generating the ticket.");
     } finally {
         btn.disabled = false;
-        btn.innerText = translations[currentLang]['pay_now'];
+        btn.innerText = "Generate Ticket";
     }
 }
 

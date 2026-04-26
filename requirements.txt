@@ -4,6 +4,8 @@ reportlab
 razorpay
 python-decouple
 Pillow
+daphne
+channels
 
 gunicorn
 whitenoise

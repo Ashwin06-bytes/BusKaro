@@ -20,7 +20,22 @@
         body { font-family: 'Inter', sans-serif; background-color: var(--background); margin: 0; padding: 20px; color: var(--text); }
         .container { max-width: 800px; margin: 0 auto; }
         .header-section { margin-bottom: 20px; }
-        .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        /* ── Time-filter chips ── */
+        .time-filter-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .time-filter-label { font-size: 0.85rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
+        .time-chip {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+            background: #fff; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+            color: var(--subtext); transition: all 0.18s; user-select: none; line-height: 1.3;
+        }
+        .time-chip span.chip-icon { font-size: 1rem; margin-bottom: 2px; }
+        .time-chip:hover { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+        .time-chip.active {
+            background: var(--primary); border-color: var(--primary);
+            color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+        }
         select, button { padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
         .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
         .dummy-card { border: 2px dashed #94a3b8; background-color: var(--dummy-bg); }
@@ -34,6 +49,25 @@
         .times { font-size: 1.1rem; font-weight: bold; margin: 10px 0; }
         .meta-info { font-size: 0.9rem; color: var(--subtext); }
         #loading { display: none; text-align: center; padding: 20px; }
+        /* ── Exact time range ── */
+        .time-range-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+        .time-range-row label { font-size: 0.82rem; font-weight: 600; color: var(--subtext); white-space: nowrap; }
+        .time-input {
+            padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 0.85rem; font-family: inherit; color: var(--text);
+            outline: none; transition: border-color 0.18s;
+        }
+        .time-input:focus { border-color: var(--primary); }
+        .time-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+        .result-count-badge {
+            margin-left: auto; background: #eff6ff; color: var(--primary);
+            font-size: 0.78rem; font-weight: 700; padding: 4px 12px;
+            border-radius: 20px; border: 1px solid #bfdbfe; white-space: nowrap;
+        }
+        .reset-time-btn {
+            font-size: 0.78rem; background: none; border: none;
+            color: var(--subtext); cursor: pointer; text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -90,6 +124,38 @@
             </label>
         </div>
 
+        <!-- ── Departure Time Filter ── -->
+        <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <div class="time-filter-wrap">
+                <span class="time-filter-label">🕐 Departure Time</span>
+                <button type="button" class="time-chip" data-slot="morning"   id="chip-morning">
+                    <span class="chip-icon">🌅</span>Morning<br><small style="font-weight:400;">6 AM – 12 PM</small>
+                </button>
+                <button type="button" class="time-chip" data-slot="afternoon" id="chip-afternoon">
+                    <span class="chip-icon">☀️</span>Afternoon<br><small style="font-weight:400;">12 PM – 6 PM</small>
+                </button>
+                <button type="button" class="time-chip" data-slot="evening"   id="chip-evening">
+                    <span class="chip-icon">🌆</span>Evening<br><small style="font-weight:400;">6 PM – 10 PM</small>
+                </button>
+                <button type="button" class="time-chip" data-slot="night"     id="chip-night">
+                    <span class="chip-icon">🌙</span>Night<br><small style="font-weight:400;">10 PM – 6 AM</small>
+                </button>
+                <button type="button" id="clear-time-filter"
+                    style="margin-left:8px; font-size:0.78rem; background:none; border:none; color:var(--subtext); cursor:pointer; text-decoration:underline; display:none;">
+                    Clear
+                </button>
+            </div>
+
+            <!-- ⏱ Exact from-time row -->
+            <div class="time-range-row">
+                <label for="time-from">⏱ Show buses from</label>
+                <input type="time" id="time-from" class="time-input" title="Show all buses departing at or after this time">
+                <span style="font-size:0.8rem; color:var(--subtext);">onwards</span>
+                <button type="button" class="reset-time-btn" id="reset-exact-time" style="display:none;">Reset</button>
+                <span class="result-count-badge" id="result-count" style="display:none;"></span>
+            </div>
+        </div>
+
         <div id="loading" data-i18n="Loading results...">Loading results...</div>
         <div id="results-container"></div>
     </div>
@@ -138,6 +204,32 @@
                 data = data.filter(item => item.tatkal_open);
             }
 
+            // Filter by departure time slots
+            const activeSlots = [...document.querySelectorAll('.time-chip.active')].map(c => c.dataset.slot);
+            if (activeSlots.length > 0) {
+                data = data.filter(item => {
+                    const h = new Date(item.departure_dt).getHours();
+                    return activeSlots.some(slot => {
+                        if (slot === 'morning')   return h >= 6  && h < 12;
+                        if (slot === 'afternoon') return h >= 12 && h < 18;
+                        if (slot === 'evening')   return h >= 18 && h < 22;
+                        if (slot === 'night')     return h >= 22 || h < 6;
+                        return false;
+                    });
+                });
+            }
+
+            // Filter by exact departure time (from onwards)
+            const fromVal = document.getElementById('time-from').value; // "HH:MM"
+            if (fromVal) {
+                data = data.filter(item => {
+                    const d  = new Date(item.departure_dt);
+                    const hh = d.getHours().toString().padStart(2,'0');
+                    const mm = d.getMinutes().toString().padStart(2,'0');
+                    return `${hh}:${mm}` >= fromVal;
+                });
+            }
+
             // Sort
             const sortControl = document.getElementById('sort-control').value;
             data.sort((a, b) => {
@@ -152,8 +244,18 @@
                 return 0;
             });
 
+            // Update result count badge
+            const badge = document.getElementById('result-count');
+            badge.textContent = `${data.length} bus${data.length !== 1 ? 'es' : ''} found`;
+            badge.style.display = 'inline-block';
+
             if (data.length === 0) {
-                container.innerHTML = '<p>No buses found.</p>';
+                container.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:var(--subtext);">
+                        <div style="font-size:2.5rem; margin-bottom:10px;">🔍</div>
+                        <strong style="font-size:1.1rem;">No buses match your filters</strong>
+                        <p style="margin-top:8px; font-size:0.9rem;">Try adjusting the time range or clearing filters.</p>
+                    </div>`;
                 return;
             }
 
@@ -222,6 +324,47 @@
         document.getElementById('sort-control').addEventListener('change', renderResults);
         document.getElementById('source-filter').addEventListener('change', renderResults);
         document.getElementById('tatkal-filter').addEventListener('change', renderResults);
+
+        // Exact from-time events
+        document.getElementById('time-from').addEventListener('change', () => {
+            syncResetBtn(); renderResults();
+        });
+        document.getElementById('reset-exact-time').addEventListener('click', () => {
+            document.getElementById('time-from').value = '';
+            document.getElementById('reset-exact-time').style.display = 'none';
+            renderResults();
+        });
+        function syncResetBtn() {
+            const show = document.getElementById('time-from').value;
+            document.getElementById('reset-exact-time').style.display = show ? 'inline' : 'none';
+        }
+
+        // Auto-fill "From" with current time when searching today's date
+        (function autoFillFromTime() {
+            const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+            if (date === today) {
+                const now  = new Date();
+                const hh   = now.getHours().toString().padStart(2, '0');
+                const mm   = now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('time-from').value = `${hh}:${mm}`;
+                syncResetBtn();
+            }
+        })();
+
+        // Time chip toggle logic
+        document.querySelectorAll('.time-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('active');
+                const anyActive = document.querySelectorAll('.time-chip.active').length > 0;
+                document.getElementById('clear-time-filter').style.display = anyActive ? 'inline' : 'none';
+                renderResults();
+            });
+        });
+        document.getElementById('clear-time-filter').addEventListener('click', () => {
+            document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('active'));
+            document.getElementById('clear-time-filter').style.display = 'none';
+            renderResults();
+        });
 
         // Initial load
         if(origin && destination && date) {

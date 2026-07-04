@@ -187,19 +187,21 @@ def extract_features(
         from inventory.models import Schedule as ScheduleModel  # local import
 
         cutoff_date = (now - datetime.timedelta(days=_FILL_RATE_LOOKBACK_DAYS)).date()
-        completed_schedules = list(
-            ScheduleModel.objects.filter(
+        # Filter by weekday in Python because Django's DateField does not support
+        # the database-level __weekday lookup uniformly (e.g. on SQLite).
+        completed_schedules = [
+            s for s in ScheduleModel.objects.filter(
                 route=schedule.route,
                 status='COMPLETED',
                 journey_date__gte=cutoff_date,
-                journey_date__weekday=day_of_week,  # same weekday only
             ).annotate(
                 booked_count=Count(
                     'inventory',
                     filter=Q(inventory__status='BOOKED'),
                 )
             ).select_related('bus')  # avoids N+1 when reading bus.total_seats
-        )
+            if s.journey_date.weekday() == day_of_week
+        ]
 
         if completed_schedules:
             # Compute weighted average: sum(booked) / sum(total_seats)

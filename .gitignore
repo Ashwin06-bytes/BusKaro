@@ -5,3 +5,7 @@ db.sqlite3
 media/
 .env
 demo_export.csv
+
+# ML artifacts — regenerate with: python manage.py train_tatkal_demand_model
+tatkal/ml/data.csv
+tatkal/ml/demand_model.joblib

@@ -11,3 +11,9 @@ gunicorn
 whitenoise
 dj-database-url
 psycopg2-binary
+
+# ML – Tatkal demand prediction
+scikit-learn
+numpy
+pandas
+joblib

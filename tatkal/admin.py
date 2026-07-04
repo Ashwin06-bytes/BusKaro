@@ -22,8 +22,8 @@ class TatkalQuotaAdmin(admin.ModelAdmin):
 
 @admin.register(TatkalBooking)
 class TatkalBookingAdmin(admin.ModelAdmin):
-    list_display = ('ticket', 'quota', 'surcharge_amount', 'booked_at')
-    readonly_fields = ('ticket', 'quota', 'surcharge_amount', 'booked_at')
+    list_display = ('ticket', 'quota', 'surcharge_amount', 'predicted_demand_score', 'dynamic_surcharge_pct', 'booked_at')
+    readonly_fields = ('ticket', 'quota', 'surcharge_amount', 'predicted_demand_score', 'dynamic_surcharge_pct', 'booked_at')
 
     def has_add_permission(self, request):
         return False

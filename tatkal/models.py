@@ -34,5 +34,21 @@ class TatkalBooking(models.Model):
     surcharge_amount = models.DecimalField(max_digits=8, decimal_places=2)
     booked_at = models.DateTimeField(auto_now_add=True)
 
+    # AI demand prediction audit fields ──────────────────────────────────────
+    # Populated at booking time from predict_dynamic_surcharge().
+    # NULL when the ticket is not tatkal or when AI values are unavailable.
+    predicted_demand_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Raw ML demand score [0–10] at the time of booking."
+    )
+    dynamic_surcharge_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="AI-predicted surcharge percentage applied at booking time."
+    )
+
     def __str__(self):
         return f"Booking in quota {self.quota.id}"

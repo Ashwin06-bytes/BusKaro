@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -8,9 +9,11 @@ from aggregator.adapters.internal import InternalAdapter
 from aggregator.adapters.tnstc import TNSTCAdapter
 from aggregator.adapters.redbus import RedbusAdapter
 from aggregator.adapters.abhibus import AbhibusAdapter
-from tatkal.models import TatkalQuota, TatkalConfig
+from tatkal.models import TatkalQuota
 from aggregator.models import SearchLog
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 ADAPTER_CLASSES = {
     "internal": InternalAdapter,
@@ -86,21 +89,54 @@ def aggregated_search(request):
 
         if is_tatkal_available:
             result['tatkal_open'] = True
-            
-            # Determine surcharge percent
-            # For internal, check if there's related operator TatkalConfig
-            surcharge_percent = 25.0 # default
-            if source == 'internal':
-                try:
-                    from routes.models import Schedule
-                    sched = Schedule.objects.get(id=int(source_trip_id))
-                    if hasattr(sched.bus.route, 'operator_type'):
-                        pass
-                except Exception:
-                    pass
-            
+
             base_fare = float(result.get('fare', 0))
-            result['tatkal_fare'] = round(base_fare * (1 + float(surcharge_percent) / 100), 2)
+            surcharge_percent = 25.0  # safe default throughout
+
+            if source == 'internal':
+                # ── ML-powered dynamic surcharge for internal schedules ─────
+                # Feature extraction and prediction are both wrapped in their
+                # own try/except, so a failure here degrades gracefully to the
+                # static 25% default without breaking the search response.
+                try:
+                    from inventory.models import Schedule as InventorySchedule
+                    from tatkal.ml.features import extract_features
+                    from tatkal.ml.predict import predict_dynamic_surcharge
+
+                    sched = InventorySchedule.objects.select_related(
+                        'bus', 'route'
+                    ).get(id=int(source_trip_id))
+
+                    features = extract_features(sched, quota)
+
+                    if features is not None:
+                        surcharge_percent, demand_score = predict_dynamic_surcharge(
+                            **features
+                        )
+                        result['tatkal_demand_score'] = demand_score
+                        result['surcharge_percent'] = surcharge_percent
+                    else:
+                        # extract_features already logged the warning
+                        result['tatkal_demand_score'] = None
+                        result['surcharge_percent'] = surcharge_percent
+
+                except Exception as _ml_exc:
+                    logger.warning(
+                        "Tatkal ML pricing failed for internal trip %s: %s. "
+                        "Falling back to 25%% static surcharge.",
+                        source_trip_id,
+                        _ml_exc,
+                    )
+                    result['tatkal_demand_score'] = None
+                    result['surcharge_percent'] = surcharge_percent
+            else:
+                # Non-internal sources have no Schedule / SeatInventory.
+                # Keep the existing static 25% surcharge.
+                result['tatkal_demand_score'] = None
+                result['surcharge_percent'] = surcharge_percent
+
+            result['tatkal_fare'] = round(base_fare * (1 + surcharge_percent / 100), 2)
+
         elif result.get('is_dummy'):
             # Simulate tatkal for 1/3rd of dummy buses so the frontend filter works
             try:
